@@ -101,7 +101,7 @@ export async function loginWithGoogle() {
   }
 
   try {
-    return await signInWithPopup(
+    return await signInWithRedirect(
       services.auth,
       googleProvider
     );
