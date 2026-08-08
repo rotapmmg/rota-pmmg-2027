@@ -213,6 +213,12 @@ export async function loadFirebaseBackup() {
   return backupSnapshot.data();
 }
 export function getFirebaseServices() {
+  return {
+    app: firebaseApp,
+    auth: firebaseAuth,
+    db: firestoreDb
+  };
+}
   export async function loadUserPlan() {
   const services = await initializeFirebaseSync();
 
