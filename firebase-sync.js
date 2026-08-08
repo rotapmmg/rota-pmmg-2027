@@ -272,7 +272,7 @@ window.firebaseSync = {
     getFirebaseServices,
   saveFirebaseBackup,
   loadFirebaseBackup
-  loadUserPlan,
+  loadUserPlan
 };
 
 initializeFirebaseSync();
