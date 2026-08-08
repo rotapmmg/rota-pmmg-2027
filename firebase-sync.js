@@ -32,6 +32,7 @@ let firebaseApp = null;
 let firebaseAuth = null;
 let firestoreDb = null;
 let initializationPromise = null;
+let currentUserPlan = "free";
 
 const googleProvider = new GoogleAuthProvider();
 
