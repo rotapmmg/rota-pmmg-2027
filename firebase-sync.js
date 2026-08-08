@@ -213,6 +213,39 @@ export async function loadFirebaseBackup() {
   return backupSnapshot.data();
 }
 export function getFirebaseServices() {
+  export async function loadUserPlan() {
+  const services = await initializeFirebaseSync();
+
+  if (!services?.auth || !services?.db) {
+    return "free";
+  }
+
+  const user = services.auth.currentUser;
+
+  if (!user) {
+    currentUserPlan = "free";
+    return currentUserPlan;
+  }
+
+  const userReference = doc(
+    services.db,
+    "users",
+    user.uid
+  );
+
+  const userSnapshot = await getDoc(userReference);
+
+  if (!userSnapshot.exists()) {
+    currentUserPlan = "free";
+    return currentUserPlan;
+  }
+
+  const userData = userSnapshot.data();
+
+  currentUserPlan = userData.plan || "free";
+
+  return currentUserPlan;
+}
   return {
     app: firebaseApp,
     auth: firebaseAuth,
