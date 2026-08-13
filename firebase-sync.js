@@ -24,6 +24,8 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
+  collection,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -279,10 +281,37 @@ export async function loadPremiumLesson(lessonId) {
   };
 }
 
-/*
- * Deixa as funções acessíveis ao código antigo do app,
- * que ainda não utiliza módulos JavaScript.
- */
+export async function loadPremiumLessons() {
+  const services = await initializeFirebaseSync();
+
+  if (!services?.auth || !services?.db) {
+    throw new Error("Firebase não está disponível.");
+  }
+
+  const user = services.auth.currentUser;
+
+  if (!user) {
+    const error = new Error("É necessário entrar com Google.");
+    error.code = "auth/required";
+    throw error;
+  }
+
+  const lessonsSnapshot = await getDocs(
+    collection(services.db, "premiumLessons")
+  );
+
+  return lessonsSnapshot.docs
+    .map(snapshot => ({
+      id: snapshot.id,
+      ...snapshot.data()
+    }))
+    .sort((a, b) => {
+      const orderA = Number.isFinite(Number(a.order)) ? Number(a.order) : 9999;
+      const orderB = Number.isFinite(Number(b.order)) ? Number(b.order) : 9999;
+      return orderA - orderB || String(a.title || a.id).localeCompare(String(b.title || b.id), "pt-BR");
+    });
+}
+
 window.firebaseSync = {
   initializeFirebaseSync,
   loginWithGoogle,
@@ -293,7 +322,12 @@ window.firebaseSync = {
   saveFirebaseBackup,
   loadFirebaseBackup,
   loadUserPlan,
-  loadPremiumLesson
+  loadPremiumLesson,
+  loadPremiumLessons
 };
 
 initializeFirebaseSync();
+
+import("./premium-library.js").catch(error => {
+  console.error("Não foi possível carregar a biblioteca Premium:", error);
+});
