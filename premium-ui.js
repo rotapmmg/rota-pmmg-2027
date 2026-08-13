@@ -59,6 +59,23 @@
         </div>
       </header>
 
+      <article class="panel premium-compare" id="premiumProtectedTestCard">
+        <span class="eyebrow">TESTE DE SEGURANÇA PREMIUM</span>
+        <h3>Aula Premium protegida</h3>
+        <p class="muted">
+          Use este botão para testar a aula <strong>aula-001</strong> armazenada
+          em <strong>premiumLessons</strong>. O Firestore decide se sua conta pode ler o conteúdo.
+        </p>
+        <button class="primary-btn" id="loadPremiumTestLesson" type="button">
+          🔐 Abrir aula Premium de teste
+        </button>
+        <div id="premiumTestResult" class="lesson-block" hidden>
+          <h3 id="premiumTestTitle"></h3>
+          <p id="premiumTestContent"></p>
+          <small id="premiumTestStatus" class="premium-note"></small>
+        </div>
+      </article>
+
       <div class="premium-grid">
         <article class="premium-card">
           <span class="eyebrow">PLANO ATUAL</span>
@@ -84,23 +101,6 @@
           <small class="premium-note">Pagamento ainda não ativado.</small>
         </article>
       </div>
-
-      <article class="panel premium-compare">
-        <span class="eyebrow">TESTE DE ACESSO PROTEGIDO</span>
-        <h3>Aula Premium protegida pelo Firestore</h3>
-        <p class="muted">
-          Este teste busca <strong>premiumLessons/aula-001</strong> diretamente
-          no Firestore. A regra do banco decide se o conteúdo pode ser lido.
-        </p>
-        <button class="primary-btn" id="loadPremiumTestLesson" type="button">
-          Abrir aula Premium de teste
-        </button>
-        <div id="premiumTestResult" class="lesson-block" hidden>
-          <h3 id="premiumTestTitle"></h3>
-          <p id="premiumTestContent"></p>
-          <small id="premiumTestStatus" class="premium-note"></small>
-        </div>
-      </article>
 
       <article class="panel premium-compare">
         <span class="eyebrow">COMPARAÇÃO</span>
