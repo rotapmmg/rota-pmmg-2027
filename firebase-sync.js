@@ -154,6 +154,7 @@ export async function observeFirebaseUser(callback) {
     callback
   );
 }
+
 export async function saveFirebaseBackup(backup) {
   const services = await initializeFirebaseSync();
 
@@ -185,6 +186,7 @@ export async function saveFirebaseBackup(backup) {
 
   return true;
 }
+
 export async function loadFirebaseBackup() {
   const services = await initializeFirebaseSync();
 
@@ -212,6 +214,7 @@ export async function loadFirebaseBackup() {
 
   return backupSnapshot.data();
 }
+
 export function getFirebaseServices() {
   return {
     app: firebaseApp,
@@ -219,11 +222,13 @@ export function getFirebaseServices() {
     db: firestoreDb
   };
 }
-  export async function loadUserPlan() {
+
+export async function loadUserPlan() {
   const services = await initializeFirebaseSync();
 
   if (!services?.auth || !services?.db) {
-    return "free";
+    currentUserPlan = "free";
+    return currentUserPlan;
   }
 
   const user = services.auth.currentUser;
@@ -248,15 +253,12 @@ export function getFirebaseServices() {
 
   const userData = userSnapshot.data();
 
-  currentUserPlan = userData.plan || "free";
+  currentUserPlan =
+    userData.plan === "premium"
+      ? "premium"
+      : "free";
 
   return currentUserPlan;
-}
-  return {
-    app: firebaseApp,
-    auth: firebaseAuth,
-    db: firestoreDb
-  };
 }
 
 /*
@@ -269,9 +271,9 @@ window.firebaseSync = {
   logoutFromGoogle,
   getCurrentFirebaseUser,
   observeFirebaseUser,
-    getFirebaseServices,
+  getFirebaseServices,
   saveFirebaseBackup,
-  loadFirebaseBackup
+  loadFirebaseBackup,
   loadUserPlan
 };
 
