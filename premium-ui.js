@@ -7,6 +7,14 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
+  const escapeHtml = value =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
   const freeFeatures = [
     "Aulas selecionadas",
     "Questões básicas",
@@ -167,6 +175,48 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function renderPremiumLessonPage(lesson) {
+    const page = document.getElementById(PAGE_ID);
+    if (!page) return;
+
+    page.innerHTML = `
+      <article class="panel">
+        <button class="ghost-btn" id="backToPremiumPlans" type="button">
+          ← Voltar para Planos
+        </button>
+
+        <span class="eyebrow">AULA PREMIUM • ACESSO PROTEGIDO</span>
+        <h2>${escapeHtml(lesson.title || "Aula Premium")}</h2>
+
+        <div class="lesson-block">
+          <h3>📚 Conteúdo da aula</h3>
+          <p>${escapeHtml(lesson.content || "Conteúdo Premium carregado com sucesso.")}</p>
+        </div>
+
+        <div class="lesson-block">
+          <strong>🔐 Acesso autorizado</strong>
+          <p class="muted">
+            Esta aula foi carregada diretamente do Firestore depois que as regras
+            confirmaram que sua conta possui acesso Premium.
+          </p>
+        </div>
+      </article>
+    `;
+
+    const title = $("#pageTitle");
+    if (title) title.textContent = "Aula Premium";
+
+    $("#backToPremiumPlans")?.addEventListener("click", () => {
+      page.remove();
+      createPage();
+      bind();
+      refreshPlanStatus();
+      openPremium();
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function waitForFirebaseSync() {
     let attempts = 0;
 
@@ -248,11 +298,8 @@
         return;
       }
 
-      title.textContent = lesson.title || "Aula Premium";
-      content.textContent = lesson.content || "Conteúdo Premium carregado com sucesso.";
-      status.textContent = "Acesso autorizado pelas regras do Firestore.";
-
       await refreshPlanStatus();
+      renderPremiumLessonPage(lesson);
     } catch (error) {
       console.error("Acesso Premium negado ou indisponível:", error);
 
