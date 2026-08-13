@@ -100,29 +100,10 @@ export async function loginWithGoogle() {
     );
   }
 
-  try {
-    return await signInWithRedirect(
-      services.auth,
-      googleProvider
-    );
-  } catch (error) {
-    const redirectFallbackErrors = [
-      "auth/popup-blocked",
-      "auth/operation-not-supported-in-this-environment",
-      "auth/web-storage-unsupported"
-    ];
-
-    if (redirectFallbackErrors.includes(error.code)) {
-      await signInWithRedirect(
-        services.auth,
-        googleProvider
-      );
-
-      return null;
-    }
-
-    throw error;
-  }
+  return signInWithPopup(
+    services.auth,
+    googleProvider
+  );
 }
 
 export async function logoutFromGoogle() {
