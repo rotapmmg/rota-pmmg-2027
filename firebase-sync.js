@@ -242,6 +242,43 @@ export async function loadUserPlan() {
   return currentUserPlan;
 }
 
+export async function loadPremiumLesson(lessonId) {
+  const services = await initializeFirebaseSync();
+
+  if (!services?.auth || !services?.db) {
+    throw new Error("Firebase não está disponível.");
+  }
+
+  const user = services.auth.currentUser;
+
+  if (!user) {
+    const error = new Error("É necessário entrar com Google.");
+    error.code = "auth/required";
+    throw error;
+  }
+
+  if (!lessonId || typeof lessonId !== "string") {
+    throw new Error("Aula Premium inválida.");
+  }
+
+  const lessonReference = doc(
+    services.db,
+    "premiumLessons",
+    lessonId
+  );
+
+  const lessonSnapshot = await getDoc(lessonReference);
+
+  if (!lessonSnapshot.exists()) {
+    return null;
+  }
+
+  return {
+    id: lessonSnapshot.id,
+    ...lessonSnapshot.data()
+  };
+}
+
 /*
  * Deixa as funções acessíveis ao código antigo do app,
  * que ainda não utiliza módulos JavaScript.
@@ -255,7 +292,8 @@ window.firebaseSync = {
   getFirebaseServices,
   saveFirebaseBackup,
   loadFirebaseBackup,
-  loadUserPlan
+  loadUserPlan,
+  loadPremiumLesson
 };
 
 initializeFirebaseSync();
