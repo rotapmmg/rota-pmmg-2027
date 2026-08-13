@@ -312,10 +312,6 @@ export async function loadPremiumLessons() {
     });
 }
 
-/*
- * Deixa as funções acessíveis ao código antigo do app,
- * que ainda não utiliza módulos JavaScript.
- */
 window.firebaseSync = {
   initializeFirebaseSync,
   loginWithGoogle,
@@ -331,3 +327,7 @@ window.firebaseSync = {
 };
 
 initializeFirebaseSync();
+
+import("./premium-library.js").catch(error => {
+  console.error("Não foi possível carregar a biblioteca Premium:", error);
+});
