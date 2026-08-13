@@ -32,13 +32,37 @@
     `;
   }
 
-  function renderLessonPage(page, lesson, reloadLibrary) {
+  function normalizeGroup(value, fallback) {
+    const text = String(value ?? "").trim();
+    return text || fallback;
+  }
+
+  function groupLessons(lessons) {
+    const subjects = new Map();
+
+    lessons.forEach(lesson => {
+      const subject = normalizeGroup(lesson.subject, "Geral");
+      const module = normalizeGroup(lesson.module, "Módulo geral");
+
+      if (!subjects.has(subject)) subjects.set(subject, new Map());
+      const modules = subjects.get(subject);
+      if (!modules.has(module)) modules.set(module, []);
+      modules.get(module).push(lesson);
+    });
+
+    return subjects;
+  }
+
+  function renderLessonPage(page, lesson) {
+    const subject = normalizeGroup(lesson.subject, "Geral");
+    const module = normalizeGroup(lesson.module, "Módulo geral");
+
     page.innerHTML = `
       <article class="panel premium-compare">
         <button class="ghost-btn" id="premiumLibraryBack" type="button">← Voltar para aulas Premium</button>
         <span class="eyebrow">AULA PREMIUM • ACESSO PROTEGIDO</span>
         <h2>${escapeHtml(lesson.title || "Aula Premium")}</h2>
-        ${lesson.subject ? `<p class="muted">${escapeHtml(lesson.subject)}</p>` : ""}
+        <p class="muted">${escapeHtml(subject)} • ${escapeHtml(module)}</p>
 
         <div class="lesson-block">
           <h3>Conteúdo da aula</h3>
@@ -55,16 +79,56 @@
     const title = $("#pageTitle");
     if (title) title.textContent = "Aula Premium";
 
-    $("#premiumLibraryBack")?.addEventListener("click", async () => {
-      page.remove();
-      if (typeof window.location?.reload === "function") {
-        window.location.reload();
-        return;
-      }
-      await reloadLibrary();
+    $("#premiumLibraryBack")?.addEventListener("click", () => {
+      window.location.reload();
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function renderCatalog(container, lessons) {
+    const grouped = groupLessons(lessons);
+
+    const subjectHtml = [...grouped.entries()].map(([subject, modules]) => {
+      const moduleHtml = [...modules.entries()].map(([module, moduleLessons]) => `
+        <section style="margin-top:18px;">
+          <h4 style="margin-bottom:8px;">${escapeHtml(module)}</h4>
+          <div class="history-list">
+            ${moduleLessons.map((lesson, index) => `
+              <button
+                class="ghost-btn"
+                type="button"
+                data-premium-lesson="${escapeHtml(lesson.id)}"
+                style="width:100%; text-align:left; margin-top:10px;"
+              >
+                <strong>${index + 1}. ${escapeHtml(lesson.title || lesson.id)}</strong>
+                ${lesson.duration ? `<br><small>${escapeHtml(lesson.duration)}</small>` : ""}
+              </button>
+            `).join("")}
+          </div>
+        </section>
+      `).join("");
+
+      const subjectCount = [...modules.values()].reduce((sum, list) => sum + list.length, 0);
+
+      return `
+        <article class="panel premium-compare" style="margin-top:16px;">
+          <span class="eyebrow">DISCIPLINA PREMIUM</span>
+          <h3>${escapeHtml(subject)}</h3>
+          <p class="muted">${subjectCount} aula${subjectCount === 1 ? "" : "s"}</p>
+          ${moduleHtml}
+        </article>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <article class="panel premium-compare">
+        <span class="eyebrow">BIBLIOTECA PREMIUM</span>
+        <h2>Suas aulas Premium</h2>
+        <p class="muted">${lessons.length} aula${lessons.length === 1 ? "" : "s"} disponível${lessons.length === 1 ? "" : "is"}, organizadas por disciplina e módulo.</p>
+      </article>
+      ${subjectHtml}
+    `;
   }
 
   async function mountLibrary() {
@@ -116,21 +180,7 @@
         return;
       }
 
-      container.innerHTML = `
-        <article class="panel premium-compare">
-          <span class="eyebrow">BIBLIOTECA PREMIUM</span>
-          <h3>Suas aulas Premium</h3>
-          <p class="muted">${lessons.length} aula${lessons.length === 1 ? "" : "s"} disponível${lessons.length === 1 ? "" : "is"}.</p>
-          <div class="history-list" id="premiumLessonList">
-            ${lessons.map(lesson => `
-              <button class="ghost-btn" type="button" data-premium-lesson="${escapeHtml(lesson.id)}" style="width:100%; text-align:left; margin-top:10px;">
-                <strong>${escapeHtml(lesson.title || lesson.id)}</strong>
-                ${lesson.subject ? `<br><small>${escapeHtml(lesson.subject)}</small>` : ""}
-              </button>
-            `).join("")}
-          </div>
-        </article>
-      `;
+      renderCatalog(container, lessons);
 
       container.querySelectorAll("[data-premium-lesson]").forEach(button => {
         button.addEventListener("click", async () => {
@@ -139,7 +189,7 @@
           try {
             const lesson = await window.firebaseSync.loadPremiumLesson(lessonId);
             if (!lesson) throw new Error("Aula não encontrada.");
-            renderLessonPage(page, lesson, mountLibrary);
+            renderLessonPage(page, lesson);
           } catch (error) {
             console.error("Não foi possível abrir a aula Premium:", error);
             const denied = String(error?.code || "").includes("permission-denied");
