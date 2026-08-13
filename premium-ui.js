@@ -2,6 +2,7 @@
   "use strict";
 
   const PAGE_ID = "premium";
+  const PREMIUM_TEST_LESSON_ID = "aula-001";
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -47,7 +48,7 @@
           </p>
           <div class="premium-status">
             <span>Seu plano atual</span>
-            <strong>GRÁTIS</strong>
+            <strong id="premiumCurrentPlan">GRÁTIS</strong>
           </div>
         </div>
 
@@ -67,7 +68,7 @@
           <ul>
             ${freeFeatures.map(x => `<li>✓ ${x}</li>`).join("")}
           </ul>
-          <button class="ghost-btn" disabled>Plano atual</button>
+          <button class="ghost-btn" disabled>Plano gratuito</button>
         </article>
 
         <article class="premium-card premium-card-paid">
@@ -83,6 +84,23 @@
           <small class="premium-note">Pagamento ainda não ativado.</small>
         </article>
       </div>
+
+      <article class="panel premium-compare">
+        <span class="eyebrow">TESTE DE ACESSO PROTEGIDO</span>
+        <h3>Aula Premium protegida pelo Firestore</h3>
+        <p class="muted">
+          Este teste busca <strong>premiumLessons/aula-001</strong> diretamente
+          no Firestore. A regra do banco decide se o conteúdo pode ser lido.
+        </p>
+        <button class="primary-btn" id="loadPremiumTestLesson" type="button">
+          Abrir aula Premium de teste
+        </button>
+        <div id="premiumTestResult" class="lesson-block" hidden>
+          <h3 id="premiumTestTitle"></h3>
+          <p id="premiumTestContent"></p>
+          <small id="premiumTestStatus" class="premium-note"></small>
+        </div>
+      </article>
 
       <article class="panel premium-compare">
         <span class="eyebrow">COMPARAÇÃO</span>
@@ -149,6 +167,115 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function waitForFirebaseSync() {
+    let attempts = 0;
+
+    while (!window.firebaseSync && attempts < 40) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts += 1;
+    }
+
+    return window.firebaseSync || null;
+  }
+
+  function renderPlan(plan) {
+    const isPremium = plan === "premium";
+    const label = isPremium ? "PREMIUM" : "GRÁTIS";
+
+    const currentPlan = $("#premiumCurrentPlan");
+    if (currentPlan) currentPlan.textContent = label;
+
+    const badgeLabel = $("#premiumTopBadge strong");
+    if (badgeLabel) badgeLabel.textContent = label;
+  }
+
+  async function refreshPlanStatus() {
+    const firebase = await waitForFirebaseSync();
+    if (!firebase) {
+      renderPlan("free");
+      return;
+    }
+
+    try {
+      const plan = await firebase.loadUserPlan();
+      renderPlan(plan);
+    } catch (error) {
+      console.error("Não foi possível carregar o plano:", error);
+      renderPlan("free");
+    }
+  }
+
+  async function openProtectedTestLesson() {
+    const result = $("#premiumTestResult");
+    const title = $("#premiumTestTitle");
+    const content = $("#premiumTestContent");
+    const status = $("#premiumTestStatus");
+    const button = $("#loadPremiumTestLesson");
+
+    if (!result || !title || !content || !status || !button) return;
+
+    result.hidden = false;
+    title.textContent = "Verificando acesso…";
+    content.textContent = "";
+    status.textContent = "Consultando o Firestore.";
+    button.disabled = true;
+
+    const firebase = await waitForFirebaseSync();
+
+    if (!firebase) {
+      title.textContent = "Firebase indisponível";
+      status.textContent = "Não foi possível verificar o acesso agora.";
+      button.disabled = false;
+      return;
+    }
+
+    try {
+      const user = await firebase.getCurrentFirebaseUser();
+
+      if (!user) {
+        title.textContent = "Entre com Google";
+        content.textContent = "Faça login em Metas → Conta e sincronização antes de abrir conteúdo Premium.";
+        status.textContent = "Acesso não solicitado sem autenticação.";
+        return;
+      }
+
+      const lesson = await firebase.loadPremiumLesson(PREMIUM_TEST_LESSON_ID);
+
+      if (!lesson) {
+        title.textContent = "Aula não encontrada";
+        content.textContent = "O documento Premium de teste não existe no Firestore.";
+        status.textContent = "Nenhum conteúdo foi retornado.";
+        return;
+      }
+
+      title.textContent = lesson.title || "Aula Premium";
+      content.textContent = lesson.content || "Conteúdo Premium carregado com sucesso.";
+      status.textContent = "Acesso autorizado pelas regras do Firestore.";
+
+      await refreshPlanStatus();
+    } catch (error) {
+      console.error("Acesso Premium negado ou indisponível:", error);
+
+      const denied =
+        String(error?.code || "").includes("permission-denied") ||
+        String(error?.message || "").toLowerCase().includes("permission");
+
+      title.textContent = denied
+        ? "Conteúdo Premium bloqueado"
+        : "Não foi possível abrir a aula";
+
+      content.textContent = denied
+        ? "Sua conta está autenticada, mas as regras do Firestore não autorizaram esta aula."
+        : "Tente novamente em instantes.";
+
+      status.textContent = denied
+        ? "Acesso negado com segurança pelo Firestore."
+        : "Falha ao consultar o conteúdo protegido.";
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   function bind() {
     $('[data-page="premium"]')?.addEventListener("click", e => {
       e.preventDefault();
@@ -174,6 +301,11 @@
       alert("A assinatura ainda não está ativa. Este botão será conectado ao pagamento depois.");
     });
 
+    $("#loadPremiumTestLesson")?.addEventListener(
+      "click",
+      openProtectedTestLesson
+    );
+
     if (localStorage.getItem("pmmgPremiumInterest") === "true") {
       const btn = $("#premiumInterest");
       if (btn) {
@@ -183,11 +315,25 @@
     }
   }
 
+  async function watchPlan() {
+    const firebase = await waitForFirebaseSync();
+    if (!firebase) return;
+
+    await refreshPlanStatus();
+
+    firebase.observeFirebaseUser(() => {
+      refreshPlanStatus();
+    }).catch(error => {
+      console.error("Não foi possível observar o plano Premium:", error);
+    });
+  }
+
   function init() {
     createPage();
     addNav();
     addTopBadge();
     bind();
+    watchPlan();
   }
 
   if (document.readyState === "loading") {
