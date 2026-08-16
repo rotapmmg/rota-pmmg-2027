@@ -26,6 +26,8 @@ import {
   getDoc,
   getDocs,
   collection,
+  query,
+  where,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -312,6 +314,45 @@ export async function loadPremiumLessons() {
     });
 }
 
+export async function loadPremiumQuestions(lessonId) {
+  const services = await initializeFirebaseSync();
+
+  if (!services?.auth || !services?.db) {
+    throw new Error("Firebase não está disponível.");
+  }
+
+  const user = services.auth.currentUser;
+
+  if (!user) {
+    const error = new Error("É necessário entrar com Google.");
+    error.code = "auth/required";
+    throw error;
+  }
+
+  if (!lessonId || typeof lessonId !== "string") {
+    throw new Error("Aula Premium inválida.");
+  }
+
+  const questionsQuery = query(
+    collection(services.db, "premiumQuestions"),
+    where("lessonId", "==", lessonId)
+  );
+
+  const questionsSnapshot = await getDocs(questionsQuery);
+
+  return questionsSnapshot.docs
+    .map(snapshot => ({
+      id: snapshot.id,
+      ...snapshot.data()
+    }))
+    .filter(question => question.active !== false)
+    .sort((a, b) => {
+      const orderA = Number.isFinite(Number(a.order)) ? Number(a.order) : 9999;
+      const orderB = Number.isFinite(Number(b.order)) ? Number(b.order) : 9999;
+      return orderA - orderB || String(a.id).localeCompare(String(b.id), "pt-BR");
+    });
+}
+
 window.firebaseSync = {
   initializeFirebaseSync,
   loginWithGoogle,
@@ -323,11 +364,16 @@ window.firebaseSync = {
   loadFirebaseBackup,
   loadUserPlan,
   loadPremiumLesson,
-  loadPremiumLessons
+  loadPremiumLessons,
+  loadPremiumQuestions
 };
 
 initializeFirebaseSync();
 
 import("./premium-library.js").catch(error => {
   console.error("Não foi possível carregar a biblioteca Premium:", error);
+});
+
+import("./premium-questions.js").catch(error => {
+  console.error("Não foi possível carregar as questões Premium:", error);
 });
