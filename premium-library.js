@@ -60,18 +60,13 @@
     page.innerHTML = `
       <article class="panel premium-compare">
         <button class="ghost-btn" id="premiumLibraryBack" type="button">← Voltar para aulas Premium</button>
-        <span class="eyebrow">AULA PREMIUM • ACESSO PROTEGIDO</span>
+        <span class="eyebrow">AULA PREMIUM</span>
         <h2>${escapeHtml(lesson.title || "Aula Premium")}</h2>
         <p class="muted">${escapeHtml(subject)} • ${escapeHtml(module)}</p>
 
         <div class="lesson-block">
           <h3>Conteúdo da aula</h3>
           <p>${escapeHtml(lesson.content || "Conteúdo Premium carregado.")}</p>
-        </div>
-
-        <div class="lesson-block">
-          <strong>🔐 Conteúdo protegido</strong>
-          <p class="muted">Esta aula foi obtida do Firestore somente após a autorização das Security Rules.</p>
         </div>
       </article>
     `;
