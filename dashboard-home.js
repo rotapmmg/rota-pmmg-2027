@@ -127,7 +127,7 @@
         title: `Reforce ${weakest.subject}`,
         detail: `Seu aproveitamento registrado é de ${weakest.accuracy}% em ${weakest.total} questões. Use o banco Premium para atacar esse ponto fraco.`,
         action: "practice",
-        button: "Praticar esta matéria"
+        button: "Abrir banco de questões"
       };
     }
 
@@ -184,7 +184,6 @@
       home.className = "dashboard-course-home";
       dashboard.prepend(home);
     }
-
     return home;
   }
 
@@ -289,6 +288,12 @@
     organizeDashboard();
   }
 
+  function placeAfter(anchor, node) {
+    if (!anchor || !node) return anchor;
+    if (anchor.nextElementSibling !== node) anchor.after(node);
+    return node;
+  }
+
   function organizeDashboard() {
     const dashboard = $("#dashboard");
     const home = $("#dashboardCourseHome", dashboard);
@@ -305,19 +310,10 @@
     const tools = buildTools();
 
     let anchor = home;
-    if (progress) {
-      anchor.after(progress);
-      anchor = progress;
-    }
-    if (contentGrid) {
-      anchor.after(contentGrid);
-      anchor = contentGrid;
-    }
-    if (highlights) {
-      anchor.after(highlights);
-      anchor = highlights;
-    }
-    if (tools) anchor.after(tools);
+    if (progress) anchor = placeAfter(anchor, progress);
+    if (contentGrid) anchor = placeAfter(anchor, contentGrid);
+    if (highlights) anchor = placeAfter(anchor, highlights);
+    if (tools) placeAfter(anchor, tools);
   }
 
   function rememberOpenedLesson(event) {
