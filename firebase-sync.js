@@ -269,3 +269,7 @@ import("./premium-simulations.js?v=1").catch(error => {
 import("./dashboard-home.js?v=1").catch(error => {
   console.error("Não foi possível carregar a nova tela inicial:", error);
 });
+
+import("./premium-home-bridge.js?v=1").catch(error => {
+  console.error("Não foi possível direcionar a home para o conteúdo Premium:", error);
+});
