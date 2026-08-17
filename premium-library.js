@@ -10,6 +10,15 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
 
+  function ensureTheoryStyles() {
+    if ($('link[data-premium-theory-styles]')) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "premium-theory.css?v=1";
+    link.dataset.premiumTheoryStyles = "true";
+    document.head.appendChild(link);
+  }
+
   async function waitForStudySection() {
     for (let attempt = 0; attempt < 60; attempt += 1) {
       const section = $("#premiumStudySection");
@@ -76,6 +85,105 @@
     `;
   }
 
+  function safeTextArray(value) {
+    return Array.isArray(value)
+      ? value.map(item => String(item ?? "").trim()).filter(Boolean)
+      : [];
+  }
+
+  function renderParagraphs(value) {
+    return safeTextArray(value).map(text => `<p>${escapeHtml(text)}</p>`).join("");
+  }
+
+  function renderSimpleList(value, className) {
+    const items = safeTextArray(value);
+    if (!items.length) return "";
+    return `<ul class="${className}">${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+  }
+
+  function renderExample(example) {
+    if (!example || typeof example !== "object") return "";
+    const title = String(example.title || "Exemplo explicado").trim();
+    const paragraphs = safeTextArray(example.paragraphs);
+    const steps = safeTextArray(example.steps);
+    if (!paragraphs.length && !steps.length) return "";
+
+    return `
+      <aside class="premium-example-box">
+        <strong>💡 ${escapeHtml(title)}</strong>
+        ${paragraphs.map(text => `<p>${escapeHtml(text)}</p>`).join("")}
+        ${steps.length ? `<ol class="premium-example-steps">${steps.map(step => `<li>${escapeHtml(step)}</li>`).join("")}</ol>` : ""}
+      </aside>
+    `;
+  }
+
+  function renderTheorySection(section, index) {
+    if (!section || typeof section !== "object") return "";
+    const title = String(section.title || `Parte ${index + 1}`).trim();
+    const paragraphs = safeTextArray(section.paragraphs);
+    const bullets = safeTextArray(section.bullets);
+    const attention = String(section.attention || "").trim();
+    const law = String(section.law || "").trim();
+
+    if (!paragraphs.length && !bullets.length && !attention && !law && !section.example) return "";
+
+    return `
+      <section class="premium-theory-section">
+        <span class="premium-theory-section-number">PARTE ${index + 1}</span>
+        <h3>${escapeHtml(title)}</h3>
+        ${paragraphs.map(text => `<p>${escapeHtml(text)}</p>`).join("")}
+        ${renderSimpleList(bullets, "premium-theory-list")}
+        ${law ? `<aside class="premium-law-box"><strong>⚖️ Base legal</strong><p>${escapeHtml(law)}</p></aside>` : ""}
+        ${renderExample(section.example)}
+        ${attention ? `<aside class="premium-attention-box"><strong>⚠️ Atenção para a prova</strong><p>${escapeHtml(attention)}</p></aside>` : ""}
+      </section>
+    `;
+  }
+
+  function renderStructuredTheory(lesson) {
+    const sections = Array.isArray(lesson.theorySections) ? lesson.theorySections : [];
+    if (!sections.length) {
+      return `
+        <div class="lesson-block premium-theory-block">
+          <span class="eyebrow">TEORIA</span>
+          <h3>Explicação da matéria</h3>
+          <p>${escapeHtml(lesson.content || "Conteúdo Premium carregado.")}</p>
+        </div>
+      `;
+    }
+
+    const objectives = safeTextArray(lesson.objectives);
+    const takeaways = safeTextArray(lesson.takeaways);
+    const references = safeTextArray(lesson.legalReferences);
+
+    return `
+      <div class="premium-theory-shell">
+        <section class="premium-theory-intro">
+          <span class="eyebrow">COMECE ENTENDENDO</span>
+          <h3>Visão geral da aula</h3>
+          <p>${escapeHtml(lesson.content || "Nesta aula, vamos construir o assunto passo a passo.")}</p>
+          ${objectives.length ? `<h4>Ao final, você deve conseguir:</h4>${renderSimpleList(objectives, "premium-learning-objectives")}` : ""}
+          <div class="premium-reading-meta">
+            ${lesson.duration ? `<span>⏱️ ${escapeHtml(lesson.duration)}</span>` : ""}
+            <span>📚 Teoria aprofundada</span>
+            ${references.length ? `<span>⚖️ Base legal conferida</span>` : ""}
+          </div>
+        </section>
+
+        ${sections.map((section, index) => renderTheorySection(section, index)).join("")}
+
+        ${takeaways.length || references.length ? `
+          <section class="premium-theory-closing">
+            <span class="eyebrow">FECHAMENTO DA AULA</span>
+            <h3>O que precisa ficar claro antes de avançar</h3>
+            ${renderSimpleList(takeaways, "premium-theory-takeaways")}
+            ${references.length ? `<div class="premium-legal-references"><strong>Referências legais desta aula</strong>${references.map(item => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+          </section>
+        ` : ""}
+      </div>
+    `;
+  }
+
   function renderLessonPage(container, lesson) {
     const subject = normalizeGroup(lesson.subject, "Geral");
     const module = normalizeGroup(lesson.module, "Módulo geral");
@@ -88,16 +196,11 @@
         <p class="muted">${escapeHtml(subject)} • ${escapeHtml(module)}</p>
 
         ${renderVideo(lesson)}
-
-        <div class="lesson-block premium-theory-block">
-          <span class="eyebrow">TEORIA</span>
-          <h3>Explicação da matéria</h3>
-          <p>${escapeHtml(lesson.content || "Conteúdo Premium carregado.")}</p>
-        </div>
+        ${renderStructuredTheory(lesson)}
 
         <div class="premium-study-note">
-          <strong>Somente conteúdo teórico nesta área.</strong>
-          <span>Para responder exercícios, abra a aba <b>Praticar</b>.</span>
+          <strong>Aqui o objetivo é entender a matéria de verdade.</strong>
+          <span>As questões ficam separadas na aba <b>Praticar</b>, para você estudar a teoria sem interrupções.</span>
         </div>
       </article>
     `;
@@ -126,7 +229,7 @@
                 <span class="premium-lesson-index">${index + 1}</span>
                 <span>
                   <strong>${escapeHtml(lesson.title || lesson.id)}</strong>
-                  <small>${lesson.duration ? escapeHtml(lesson.duration) : "Leitura teórica"}${safeVideoId(lesson.videoId) ? " • vídeo" : ""}</small>
+                  <small>${lesson.duration ? escapeHtml(lesson.duration) : "Leitura teórica"}${safeVideoId(lesson.videoId) ? " • vídeo" : ""}${Array.isArray(lesson.theorySections) && lesson.theorySections.length ? " • aprofundada" : ""}</small>
                 </span>
                 <span aria-hidden="true">›</span>
               </button>
@@ -155,8 +258,8 @@
       <div class="premium-section-intro">
         <div>
           <span class="eyebrow">ESTUDAR</span>
-          <h3>Teoria organizada por disciplina</h3>
-          <p class="muted">Aqui ficam apenas explicações e videoaulas. As questões foram movidas para a área Praticar.</p>
+          <h3>Teoria completa, explicada passo a passo</h3>
+          <p class="muted">As aulas priorizam compreensão: conceito, desenvolvimento, exemplos, diferenças importantes, base legal e pontos de atenção. As questões continuam separadas em Praticar.</p>
         </div>
       </div>
       <div class="premium-subject-list">${subjectHtml}</div>
@@ -234,6 +337,7 @@
   }
 
   async function init() {
+    ensureTheoryStyles();
     await mountLibrary();
 
     if (window.firebaseSync?.observeFirebaseUser) {
