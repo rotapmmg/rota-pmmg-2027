@@ -1,0 +1,26 @@
+/* Aulas Premium completas: leitura longa, exemplos e explicações em camadas */
+.premium-theory-shell{display:grid;gap:18px}
+.premium-theory-intro,.premium-theory-section,.premium-theory-closing{padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--panel-2)}
+.premium-theory-intro{background:linear-gradient(135deg,rgba(241,185,90,.08),var(--panel-2));border-color:rgba(241,185,90,.24)}
+.premium-theory-intro h3,.premium-theory-section h3,.premium-theory-closing h3{margin:5px 0 12px}
+.premium-theory-intro p,.premium-theory-section p,.premium-theory-closing p{margin:0 0 13px;line-height:1.9}
+.premium-theory-intro p:last-child,.premium-theory-section p:last-child,.premium-theory-closing p:last-child{margin-bottom:0}
+.premium-learning-objectives,.premium-theory-list,.premium-theory-takeaways{display:grid;gap:9px;margin:14px 0 0;padding:0;list-style:none}
+.premium-learning-objectives li,.premium-theory-list li,.premium-theory-takeaways li{position:relative;padding-left:24px;line-height:1.65}
+.premium-learning-objectives li::before{content:'→';position:absolute;left:0;color:var(--warning);font-weight:900}
+.premium-theory-list li::before{content:'•';position:absolute;left:5px;color:var(--warning);font-weight:900}
+.premium-theory-takeaways li::before{content:'✓';position:absolute;left:0;color:var(--success);font-weight:900}
+.premium-theory-section-number{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:28px;padding:0 9px;margin-bottom:8px;border-radius:999px;background:rgba(241,185,90,.1);color:var(--warning);font-size:11px;font-weight:900;letter-spacing:.5px}
+.premium-example-box,.premium-attention-box,.premium-law-box{margin-top:16px;padding:16px;border-radius:15px;line-height:1.7}
+.premium-example-box{border:1px solid rgba(95,211,141,.28);background:rgba(95,211,141,.06)}
+.premium-attention-box{border:1px solid rgba(241,185,90,.32);background:rgba(241,185,90,.07)}
+.premium-law-box{border:1px solid rgba(116,167,255,.25);background:rgba(116,167,255,.06)}
+.premium-example-box strong,.premium-attention-box strong,.premium-law-box strong{display:block;margin-bottom:6px;color:var(--text)}
+.premium-example-box p,.premium-attention-box p,.premium-law-box p{margin:0 0 9px;line-height:1.75}
+.premium-example-box p:last-child,.premium-attention-box p:last-child,.premium-law-box p:last-child{margin-bottom:0}
+.premium-example-steps{display:grid;gap:8px;margin:10px 0 0;padding-left:20px}
+.premium-example-steps li{line-height:1.65}
+.premium-legal-references{display:grid;gap:8px;margin-top:10px;color:var(--muted);font-size:13px}
+.premium-reading-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.premium-reading-meta span{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:11px;font-weight:800}
+@media(max-width:620px){.premium-theory-intro,.premium-theory-section,.premium-theory-closing{padding:17px}.premium-theory-intro p,.premium-theory-section p,.premium-theory-closing p{line-height:1.78}.premium-example-box,.premium-attention-box,.premium-law-box{padding:14px}}
