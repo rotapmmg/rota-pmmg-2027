@@ -10,10 +10,10 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
 
-  async function waitForPremiumPage() {
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      const page = $("#premium");
-      if (page && window.firebaseSync) return page;
+  async function waitForStudySection() {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const section = $("#premiumStudySection");
+      if (section && window.firebaseSync) return section;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     return null;
@@ -21,14 +21,11 @@
 
   function renderLocked(container, message) {
     container.innerHTML = `
-      <article class="panel premium-compare">
-        <span class="eyebrow">BIBLIOTECA PREMIUM</span>
-        <h3>🔒 Aulas Premium</h3>
+      <div class="premium-empty-state">
+        <span class="premium-empty-icon">🔒</span>
+        <h3>Área de estudo Premium</h3>
         <p class="muted">${escapeHtml(message)}</p>
-        <small class="premium-note">
-          O conteúdo das aulas não é enviado ao navegador enquanto o Firestore não autorizar o acesso.
-        </small>
-      </article>
+      </div>
     `;
   }
 
@@ -53,29 +50,60 @@
     return subjects;
   }
 
-  function renderLessonPage(page, lesson) {
+  function safeVideoId(value) {
+    const id = String(value || "").trim();
+    return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+  }
+
+  function renderVideo(lesson) {
+    const videoId = safeVideoId(lesson.videoId);
+    if (!videoId) return "";
+
+    return `
+      <div class="lesson-block premium-video-block">
+        <span class="eyebrow">VIDEOAULA</span>
+        <div class="premium-video-frame">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/${videoId}"
+            title="Videoaula: ${escapeHtml(lesson.title || "Aula Premium")}"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderLessonPage(container, lesson) {
     const subject = normalizeGroup(lesson.subject, "Geral");
     const module = normalizeGroup(lesson.module, "Módulo geral");
 
-    page.innerHTML = `
-      <article class="panel premium-compare">
-        <button class="ghost-btn" id="premiumLibraryBack" type="button">← Voltar para aulas Premium</button>
-        <span class="eyebrow">AULA PREMIUM</span>
+    container.innerHTML = `
+      <article class="premium-study-lesson">
+        <button class="ghost-btn" id="premiumLibraryBack" type="button">← Voltar para aulas</button>
+        <span class="eyebrow">ESTUDAR • AULA PREMIUM</span>
         <h2>${escapeHtml(lesson.title || "Aula Premium")}</h2>
         <p class="muted">${escapeHtml(subject)} • ${escapeHtml(module)}</p>
 
-        <div class="lesson-block">
-          <h3>Conteúdo da aula</h3>
+        ${renderVideo(lesson)}
+
+        <div class="lesson-block premium-theory-block">
+          <span class="eyebrow">TEORIA</span>
+          <h3>Explicação da matéria</h3>
           <p>${escapeHtml(lesson.content || "Conteúdo Premium carregado.")}</p>
+        </div>
+
+        <div class="premium-study-note">
+          <strong>Somente conteúdo teórico nesta área.</strong>
+          <span>Para responder exercícios, abra a aba <b>Praticar</b>.</span>
         </div>
       </article>
     `;
 
-    const title = $("#pageTitle");
-    if (title) title.textContent = "Aula Premium";
-
-    $("#premiumLibraryBack")?.addEventListener("click", () => {
-      window.location.reload();
+    $("#premiumLibraryBack", container)?.addEventListener("click", () => {
+      void mountLibrary();
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -86,18 +114,21 @@
 
     const subjectHtml = [...grouped.entries()].map(([subject, modules]) => {
       const moduleHtml = [...modules.entries()].map(([module, moduleLessons]) => `
-        <section style="margin-top:18px;">
-          <h4 style="margin-bottom:8px;">${escapeHtml(module)}</h4>
-          <div class="history-list">
+        <section class="premium-library-module">
+          <h4>${escapeHtml(module)}</h4>
+          <div class="premium-lesson-list">
             ${moduleLessons.map((lesson, index) => `
               <button
-                class="ghost-btn"
+                class="premium-lesson-button"
                 type="button"
                 data-premium-lesson="${escapeHtml(lesson.id)}"
-                style="width:100%; text-align:left; margin-top:10px;"
               >
-                <strong>${index + 1}. ${escapeHtml(lesson.title || lesson.id)}</strong>
-                ${lesson.duration ? `<br><small>${escapeHtml(lesson.duration)}</small>` : ""}
+                <span class="premium-lesson-index">${index + 1}</span>
+                <span>
+                  <strong>${escapeHtml(lesson.title || lesson.id)}</strong>
+                  <small>${lesson.duration ? escapeHtml(lesson.duration) : "Leitura teórica"}${safeVideoId(lesson.videoId) ? " • vídeo" : ""}</small>
+                </span>
+                <span aria-hidden="true">›</span>
               </button>
             `).join("")}
           </div>
@@ -107,52 +138,67 @@
       const subjectCount = [...modules.values()].reduce((sum, list) => sum + list.length, 0);
 
       return `
-        <article class="panel premium-compare" style="margin-top:16px;">
-          <span class="eyebrow">DISCIPLINA PREMIUM</span>
-          <h3>${escapeHtml(subject)}</h3>
-          <p class="muted">${subjectCount} aula${subjectCount === 1 ? "" : "s"}</p>
+        <article class="premium-subject-card">
+          <div class="premium-subject-head">
+            <div>
+              <span class="eyebrow">DISCIPLINA</span>
+              <h3>${escapeHtml(subject)}</h3>
+            </div>
+            <strong>${subjectCount} aula${subjectCount === 1 ? "" : "s"}</strong>
+          </div>
           ${moduleHtml}
         </article>
       `;
     }).join("");
 
     container.innerHTML = `
-      <article class="panel premium-compare">
-        <span class="eyebrow">BIBLIOTECA PREMIUM</span>
-        <h2>Suas aulas Premium</h2>
-        <p class="muted">${lessons.length} aula${lessons.length === 1 ? "" : "s"} disponível${lessons.length === 1 ? "" : "is"}, organizadas por disciplina e módulo.</p>
-      </article>
-      ${subjectHtml}
+      <div class="premium-section-intro">
+        <div>
+          <span class="eyebrow">ESTUDAR</span>
+          <h3>Teoria organizada por disciplina</h3>
+          <p class="muted">Aqui ficam apenas explicações e videoaulas. As questões foram movidas para a área Praticar.</p>
+        </div>
+      </div>
+      <div class="premium-subject-list">${subjectHtml}</div>
     `;
+
+    container.querySelectorAll("[data-premium-lesson]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const lessonId = button.dataset.premiumLesson;
+        button.disabled = true;
+        try {
+          const lesson = await window.firebaseSync.loadPremiumLesson(lessonId);
+          if (!lesson) throw new Error("Aula não encontrada.");
+          renderLessonPage(container, lesson);
+        } catch (error) {
+          console.error("Não foi possível abrir a aula Premium:", error);
+          const denied = String(error?.code || "").includes("permission-denied");
+          alert(denied
+            ? "Acesso Premium negado pelas regras do Firestore."
+            : "Não foi possível abrir esta aula agora.");
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
   }
 
   async function mountLibrary() {
-    const page = await waitForPremiumPage();
-    if (!page) return;
-
-    $("#premiumProtectedTestCard")?.remove();
-
-    let container = $("#premiumLessonLibrary", page);
-    if (!container) {
-      container = document.createElement("section");
-      container.id = "premiumLessonLibrary";
-      const hero = $(".premium-hero", page);
-      if (hero) hero.insertAdjacentElement("afterend", container);
-      else page.prepend(container);
-    }
+    const container = await waitForStudySection();
+    if (!container) return;
 
     container.innerHTML = `
-      <article class="panel premium-compare">
-        <span class="eyebrow">BIBLIOTECA PREMIUM</span>
+      <div class="premium-empty-state">
+        <span class="premium-empty-icon">📚</span>
         <h3>Carregando suas aulas…</h3>
-        <p class="muted">Verificando seu plano e consultando o Firestore.</p>
-      </article>
+        <p class="muted">Verificando seu plano e consultando o conteúdo protegido.</p>
+      </div>
     `;
 
     try {
       const user = await window.firebaseSync.getCurrentFirebaseUser();
       if (!user) {
-        renderLocked(container, "Entre com Google para verificar seu acesso às aulas Premium.");
+        renderLocked(container, "Entre com Google para acessar as aulas teóricas Premium.");
         return;
       }
 
@@ -162,40 +208,19 @@
         return;
       }
 
-      const lessons = await window.firebaseSync.loadPremiumLessons();
-
+      const lessons = (await window.firebaseSync.loadPremiumLessons()).filter(lesson => lesson.active !== false);
       if (!lessons.length) {
         container.innerHTML = `
-          <article class="panel premium-compare">
-            <span class="eyebrow">BIBLIOTECA PREMIUM</span>
+          <div class="premium-empty-state">
+            <span class="premium-empty-icon">📚</span>
             <h3>Nenhuma aula publicada ainda</h3>
-            <p class="muted">Sua conta Premium está ativa, mas a biblioteca ainda está vazia.</p>
-          </article>
+            <p class="muted">Sua conta Premium está ativa, mas a biblioteca está vazia.</p>
+          </div>
         `;
         return;
       }
 
       renderCatalog(container, lessons);
-
-      container.querySelectorAll("[data-premium-lesson]").forEach(button => {
-        button.addEventListener("click", async () => {
-          const lessonId = button.dataset.premiumLesson;
-          button.disabled = true;
-          try {
-            const lesson = await window.firebaseSync.loadPremiumLesson(lessonId);
-            if (!lesson) throw new Error("Aula não encontrada.");
-            renderLessonPage(page, lesson);
-          } catch (error) {
-            console.error("Não foi possível abrir a aula Premium:", error);
-            const denied = String(error?.code || "").includes("permission-denied");
-            alert(denied
-              ? "Acesso Premium negado pelas regras do Firestore."
-              : "Não foi possível abrir esta aula agora.");
-          } finally {
-            button.disabled = false;
-          }
-        });
-      });
     } catch (error) {
       console.error("Não foi possível carregar a biblioteca Premium:", error);
       const denied = String(error?.code || "").includes("permission-denied");
@@ -213,7 +238,7 @@
 
     if (window.firebaseSync?.observeFirebaseUser) {
       window.firebaseSync.observeFirebaseUser(() => {
-        setTimeout(mountLibrary, 0);
+        setTimeout(() => void mountLibrary(), 0);
       }).catch(error => {
         console.error("Não foi possível observar o acesso Premium:", error);
       });
