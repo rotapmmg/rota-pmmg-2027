@@ -38,6 +38,24 @@
     document.head.appendChild(link);
   }
 
+  function ensureDashboardProgressResources() {
+    if (!$('link[data-dashboard-progress-styles]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "dashboard-progress.css?v=1";
+      link.dataset.dashboardProgressStyles = "true";
+      document.head.appendChild(link);
+    }
+
+    if (!$("script[data-dashboard-progress-script]")) {
+      const script = document.createElement("script");
+      script.src = "dashboard-progress.js?v=1";
+      script.defer = true;
+      script.dataset.dashboardProgressScript = "true";
+      document.head.appendChild(script);
+    }
+  }
+
   function createPage() {
     if (document.getElementById(PAGE_ID)) return;
 
@@ -406,6 +424,7 @@
 
   function init() {
     ensureNavigationStyles();
+    ensureDashboardProgressResources();
     createPage();
     organizeSidebar();
     addMobilePremiumNav();
