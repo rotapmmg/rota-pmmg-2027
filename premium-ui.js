@@ -5,6 +5,12 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
+  const modeMeta = {
+    study: { icon: "📚", label: "Estudar", detail: "Teoria e videoaulas", title: "Premium — Estudar" },
+    practice: { icon: "✍️", label: "Praticar", detail: "Banco de questões", title: "Premium — Praticar" },
+    simulation: { icon: "🎯", label: "Simulados", detail: "Treino de prova", title: "Premium — Simulados" }
+  };
+
   const freeFeatures = [
     "Aulas selecionadas",
     "Questões demonstrativas",
@@ -23,6 +29,15 @@
     "Novos conteúdos e questões"
   ];
 
+  function ensureNavigationStyles() {
+    if ($('link[data-premium-navigation-styles]')) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "premium-navigation.css?v=1";
+    link.dataset.premiumNavigationStyles = "true";
+    document.head.appendChild(link);
+  }
+
   function createPage() {
     if (document.getElementById(PAGE_ID)) return;
 
@@ -39,7 +54,7 @@
           <span class="premium-kicker">ROTA PMMG PREMIUM</span>
           <h2>Estude a teoria. Depois pratique até dominar.</h2>
           <p>
-            A área Premium agora separa o conteúdo teórico do banco de questões.
+            A área Premium separa o conteúdo teórico do banco de questões.
             Assim você consegue aprender a matéria sem interrupções e treinar em uma área própria.
           </p>
           <div class="premium-status">
@@ -89,8 +104,8 @@
               <span class="premium-empty-icon">🎯</span>
               <h3>Central de simulados</h3>
               <p class="muted">
-                Esta área está separada da teoria e do banco de questões. A próxima etapa vai conectar
-                os simulados ao banco Premium sem misturar as funções.
+                Esta área está separada da teoria e do banco de questões. Os simulados serão conectados
+                ao banco Premium sem misturar as funções.
               </p>
             </div>
           </section>
@@ -129,24 +144,74 @@
     main.appendChild(section);
   }
 
-  function addNav() {
+  function makeSectionLabel(text, id) {
+    const label = document.createElement("div");
+    label.className = "nav-section-label";
+    label.id = id;
+    label.textContent = text;
+    return label;
+  }
+
+  function makePremiumSidebarButton(mode) {
+    const meta = modeMeta[mode];
+    const button = document.createElement("button");
+    button.className = "nav-item premium-resource-nav";
+    button.type = "button";
+    button.dataset.premiumSidebar = mode;
+    button.setAttribute("aria-label", `${meta.label} no Premium`);
+    button.innerHTML = `<span class="premium-resource-icon">${meta.icon}</span><span>${meta.label}</span>`;
+    return button;
+  }
+
+  function organizeSidebar() {
+    const sidebar = $(".sidebar");
     const nav = $(".sidebar .nav");
-    if (nav && !$('[data-page="premium"]', nav)) {
-      const button = document.createElement("button");
-      button.className = "nav-item premium-nav";
-      button.dataset.page = PAGE_ID;
-      button.innerHTML = `★ <span>Premium</span><small>CURSO</small>`;
-      nav.appendChild(button);
+    if (!sidebar || !nav || nav.dataset.organized === "true") return;
+
+    const dashboard = $('[data-page="dashboard"]', nav);
+    const disciplinas = $('[data-page="disciplinas"]', nav);
+    const taf = $('[data-page="taf"]', nav);
+
+    if (dashboard && !$("#navSectionMain")) {
+      nav.insertBefore(makeSectionLabel("PRINCIPAL", "navSectionMain"), dashboard);
     }
 
-    const sheet = $(".sheet-grid");
-    if (sheet && !$('[data-sheet-page="premium"]', sheet)) {
-      const button = document.createElement("button");
-      button.className = "sheet-link";
-      button.dataset.sheetPage = PAGE_ID;
-      button.innerHTML = `<span>★</span><strong>Premium</strong><small>Estudar e praticar</small>`;
-      sheet.appendChild(button);
+    if (disciplinas && !$("#navSectionStudy")) {
+      nav.insertBefore(makeSectionLabel("ESTUDO", "navSectionStudy"), disciplinas);
     }
+
+    if (taf && !$("#navSectionPremium")) {
+      nav.insertBefore(makeSectionLabel("PREMIUM", "navSectionPremium"), taf);
+      Object.keys(modeMeta).forEach(mode => nav.insertBefore(makePremiumSidebarButton(mode), taf));
+      nav.insertBefore(makeSectionLabel("PREPARAÇÃO", "navSectionPreparation"), taf);
+    }
+
+    const exportButton = $("#exportBackupMenu");
+    if (exportButton && !$("#navSectionData")) {
+      sidebar.insertBefore(makeSectionLabel("DADOS", "navSectionData"), exportButton);
+    }
+
+    nav.dataset.organized = "true";
+  }
+
+  function addMobilePremiumNav() {
+    const sheet = $(".sheet-grid");
+    if (!sheet || $("#premiumSheetSection")) return;
+
+    const label = document.createElement("div");
+    label.id = "premiumSheetSection";
+    label.className = "sheet-section-title";
+    label.innerHTML = `<span>★</span><strong>Premium</strong>`;
+    sheet.appendChild(label);
+
+    Object.entries(modeMeta).forEach(([mode, meta]) => {
+      const button = document.createElement("button");
+      button.className = "sheet-link sheet-link-premium";
+      button.type = "button";
+      button.dataset.premiumSheet = mode;
+      button.innerHTML = `<span>${meta.icon}</span><strong>${meta.label}</strong><small>${meta.detail}</small>`;
+      sheet.appendChild(button);
+    });
   }
 
   function addTopBadge() {
@@ -161,12 +226,65 @@
     actions.insertBefore(badge, $("#themeToggle"));
   }
 
-  function openPremium() {
+  function addPageFooter() {
+    const main = $(".main");
+    if (!main || $("#sitePageFooter")) return;
+
+    const footer = document.createElement("footer");
+    footer.id = "sitePageFooter";
+    footer.className = "site-page-footer";
+    footer.innerHTML = `
+      <div class="site-page-footer-card">
+        <div class="site-page-footer-copy">
+          <span class="eyebrow">ROTA PMMG 2027</span>
+          <strong>Continue pelo próximo bloco de preparação.</strong>
+          <small>Os recursos Premium também ficam disponíveis diretamente no menu lateral.</small>
+        </div>
+        <div class="site-page-footer-actions" aria-label="Atalhos Premium">
+          <button type="button" data-premium-shortcut="study">📚 Estudar</button>
+          <button type="button" data-premium-shortcut="practice">✍️ Praticar</button>
+          <button type="button" data-premium-shortcut="simulation">🎯 Simulados</button>
+        </div>
+      </div>
+    `;
+    main.appendChild(footer);
+  }
+
+  function setPremiumNavigationState(mode) {
+    $$("[data-premium-sidebar]").forEach(button => {
+      const active = button.dataset.premiumSidebar === mode;
+      button.classList.toggle("active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
+
+    $$("[data-premium-sheet]").forEach(button => {
+      button.classList.toggle("active", button.dataset.premiumSheet === mode);
+    });
+
+    $("#moreMenuBtn")?.classList.add("active");
+  }
+
+  function clearPremiumNavigationState() {
+    $$("[data-premium-sidebar], [data-premium-sheet]").forEach(button => {
+      button.classList.remove("active");
+      button.removeAttribute("aria-current");
+    });
+    $("#moreMenuBtn")?.classList.remove("active");
+  }
+
+  function openPremium(mode = "study") {
+    const safeMode = modeMeta[mode] ? mode : "study";
+
     $$(".page").forEach(page => page.classList.toggle("active", page.id === PAGE_ID));
-    $$("[data-page]").forEach(btn => btn.classList.toggle("active", btn.dataset.page === PAGE_ID));
+    $$("[data-page]").forEach(btn => btn.classList.remove("active"));
+    $$("[data-mobile-page]").forEach(btn => btn.classList.remove("active"));
+
+    selectMode(safeMode);
+    setPremiumNavigationState(safeMode);
 
     const title = $("#pageTitle");
-    if (title) title.textContent = "Premium";
+    if (title) title.textContent = modeMeta[safeMode].title;
 
     $("#sidebar")?.classList.remove("open");
     $("#mobileSheet")?.classList.remove("open");
@@ -175,17 +293,25 @@
   }
 
   function selectMode(mode) {
+    const safeMode = modeMeta[mode] ? mode : "study";
+
     $$("[data-premium-mode]").forEach(button => {
-      const active = button.dataset.premiumMode === mode;
+      const active = button.dataset.premiumMode === safeMode;
       button.classList.toggle("active", active);
       button.setAttribute("aria-selected", active ? "true" : "false");
     });
 
     $$("[data-premium-mode-panel]").forEach(panel => {
-      panel.hidden = panel.dataset.premiumModePanel !== mode;
+      panel.hidden = panel.dataset.premiumModePanel !== safeMode;
     });
 
-    document.dispatchEvent(new CustomEvent("pmmg:premium-mode", { detail: { mode } }));
+    if ($(`#${PAGE_ID}`)?.classList.contains("active")) {
+      setPremiumNavigationState(safeMode);
+      const title = $("#pageTitle");
+      if (title) title.textContent = modeMeta[safeMode].title;
+    }
+
+    document.dispatchEvent(new CustomEvent("pmmg:premium-mode", { detail: { mode: safeMode } }));
   }
 
   async function waitForFirebaseSync() {
@@ -227,22 +353,26 @@
   }
 
   function bind() {
-    $('[data-page="premium"]')?.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      openPremium();
+    $$("[data-premium-sidebar]").forEach(button => {
+      button.addEventListener("click", () => openPremium(button.dataset.premiumSidebar));
     });
 
-    $('[data-sheet-page="premium"]')?.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      openPremium();
+    $$("[data-premium-sheet]").forEach(button => {
+      button.addEventListener("click", () => openPremium(button.dataset.premiumSheet));
     });
 
-    $("#premiumTopBadge")?.addEventListener("click", openPremium);
+    $$("[data-premium-shortcut]").forEach(button => {
+      button.addEventListener("click", () => openPremium(button.dataset.premiumShortcut));
+    });
+
+    $("#premiumTopBadge")?.addEventListener("click", () => openPremium("study"));
 
     $$("[data-premium-mode]").forEach(button => {
       button.addEventListener("click", () => selectMode(button.dataset.premiumMode));
+    });
+
+    $$("[data-page], [data-mobile-page], [data-sheet-page]").forEach(button => {
+      button.addEventListener("click", clearPremiumNavigationState);
     });
 
     $("#premiumInterest")?.addEventListener("click", () => {
@@ -275,9 +405,12 @@
   }
 
   function init() {
+    ensureNavigationStyles();
     createPage();
-    addNav();
+    organizeSidebar();
+    addMobilePremiumNav();
     addTopBadge();
+    addPageFooter();
     bind();
     watchPlan();
   }
