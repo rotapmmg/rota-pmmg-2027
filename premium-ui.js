@@ -29,6 +29,15 @@
     "Novos conteúdos e questões"
   ];
 
+  function ensureNavigationStyles() {
+    if ($('link[data-premium-navigation-styles]')) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "premium-navigation.css?v=1";
+    link.dataset.premiumNavigationStyles = "true";
+    document.head.appendChild(link);
+  }
+
   function createPage() {
     if (document.getElementById(PAGE_ID)) return;
 
@@ -396,6 +405,7 @@
   }
 
   function init() {
+    ensureNavigationStyles();
     createPage();
     organizeSidebar();
     addMobilePremiumNav();
