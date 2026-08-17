@@ -261,3 +261,7 @@ import("./premium-library.js?v=2").catch(error => {
 import("./premium-questions.js?v=2").catch(error => {
   console.error("Não foi possível carregar o banco de questões Premium:", error);
 });
+
+import("./premium-simulations.js?v=1").catch(error => {
+  console.error("Não foi possível carregar a central de simulados Premium:", error);
+});
