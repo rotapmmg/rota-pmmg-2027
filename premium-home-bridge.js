@@ -1,3 +1,7 @@
+import("./lessons-matematica-aprofundamento.js?v=1").catch(error => {
+  console.error("Não foi possível carregar o aprofundamento de Matemática:", error);
+});
+
 (() => {
   "use strict";
 
