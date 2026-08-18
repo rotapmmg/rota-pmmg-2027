@@ -79,7 +79,27 @@ export async function initializeFirebaseSync() {
 export async function loginWithGoogle() {
   const services = await initializeFirebaseSync();
   if (!services?.auth) throw new Error("O Firebase não está disponível neste momento.");
-  return signInWithPopup(services.auth, googleProvider);
+
+  try {
+    return await signInWithPopup(services.auth, googleProvider);
+  } catch (error) {
+    const fallbackCodes = new Set([
+      "auth/popup-blocked",
+      "auth/operation-not-supported-in-this-environment",
+      "auth/cancelled-popup-request"
+    ]);
+
+    if (!fallbackCodes.has(error?.code)) throw error;
+
+    await signInWithRedirect(services.auth, googleProvider);
+    return null;
+  }
+}
+
+export async function loginWithGoogleRedirect() {
+  const services = await initializeFirebaseSync();
+  if (!services?.auth) throw new Error("O Firebase não está disponível neste momento.");
+  await signInWithRedirect(services.auth, googleProvider);
 }
 
 export async function logoutFromGoogle() {
@@ -239,6 +259,7 @@ export async function loadPremiumQuestionsBySubject(subject) {
 window.firebaseSync = {
   initializeFirebaseSync,
   loginWithGoogle,
+  loginWithGoogleRedirect,
   logoutFromGoogle,
   getCurrentFirebaseUser,
   observeFirebaseUser,
