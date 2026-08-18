@@ -56,6 +56,24 @@
     }
   }
 
+  function ensurePremiumContentResources() {
+    const resources = [
+      ["premium-library.js?v=2", "premiumLibraryScript"],
+      ["premium-questions.js?v=2", "premiumQuestionsScript"],
+      ["premium-simulations.js?v=2", "premiumSimulationsScript"]
+    ];
+
+    resources.forEach(([src, dataKey]) => {
+      const selector = `script[data-${dataKey.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}]`;
+      if ($(selector)) return;
+
+      const script = document.createElement("script");
+      script.src = src;
+      script.dataset[dataKey] = "true";
+      document.body.appendChild(script);
+    });
+  }
+
   function createPage() {
     if (document.getElementById(PAGE_ID)) return;
 
@@ -291,9 +309,16 @@
     $("#moreMenuBtn")?.classList.remove("active");
   }
 
+  function focusPremiumWorkspace() {
+    requestAnimationFrame(() => {
+      $(".premium-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   function openPremium(mode = "study") {
     const safeMode = modeMeta[mode] ? mode : "study";
 
+    ensurePremiumContentResources();
     $$(".page").forEach(page => page.classList.toggle("active", page.id === PAGE_ID));
     $$("[data-page]").forEach(btn => btn.classList.remove("active"));
     $$("[data-mobile-page]").forEach(btn => btn.classList.remove("active"));
@@ -307,11 +332,13 @@
     $("#sidebar")?.classList.remove("open");
     $("#mobileSheet")?.classList.remove("open");
     document.body.style.overflow = "";
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    focusPremiumWorkspace();
   }
 
   function selectMode(mode) {
     const safeMode = modeMeta[mode] ? mode : "study";
+
+    ensurePremiumContentResources();
 
     $$("[data-premium-mode]").forEach(button => {
       const active = button.dataset.premiumMode === safeMode;
@@ -386,7 +413,10 @@
     $("#premiumTopBadge")?.addEventListener("click", () => openPremium("study"));
 
     $$("[data-premium-mode]").forEach(button => {
-      button.addEventListener("click", () => selectMode(button.dataset.premiumMode));
+      button.addEventListener("click", () => {
+        selectMode(button.dataset.premiumMode);
+        focusPremiumWorkspace();
+      });
     });
 
     $$("[data-page], [data-mobile-page], [data-sheet-page]").forEach(button => {
@@ -426,6 +456,7 @@
     ensureNavigationStyles();
     ensureDashboardProgressResources();
     createPage();
+    ensurePremiumContentResources();
     organizeSidebar();
     addMobilePremiumNav();
     addTopBadge();
