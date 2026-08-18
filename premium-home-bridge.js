@@ -2,6 +2,14 @@ import("./lessons-matematica-aprofundamento.js?v=1").catch(error => {
   console.error("Não foi possível carregar o aprofundamento de Matemática:", error);
 });
 
+import("./lessons-ingles-aprofundamento.js?v=1").catch(error => {
+  console.error("Não foi possível carregar o aprofundamento de Inglês:", error);
+});
+
+import("./lessons-literatura-aprofundamento.js?v=1").catch(error => {
+  console.error("Não foi possível carregar o aprofundamento de Literatura:", error);
+});
+
 (() => {
   "use strict";
 
