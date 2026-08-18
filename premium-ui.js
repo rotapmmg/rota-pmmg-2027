@@ -199,6 +199,16 @@
     return button;
   }
 
+  function makeGoogleSidebarButton() {
+    const button = document.createElement("button");
+    button.id = "sidebarGoogleLogin";
+    button.className = "nav-item";
+    button.type = "button";
+    button.setAttribute("aria-label", "Entrar com a Conta Google");
+    button.innerHTML = `<span>G</span><span>Entrar com Google</span>`;
+    return button;
+  }
+
   function organizeSidebar() {
     const sidebar = $(".sidebar");
     const nav = $(".sidebar .nav");
@@ -220,6 +230,11 @@
       nav.insertBefore(makeSectionLabel("PREMIUM", "navSectionPremium"), taf);
       Object.keys(modeMeta).forEach(mode => nav.insertBefore(makePremiumSidebarButton(mode), taf));
       nav.insertBefore(makeSectionLabel("PREPARAÇÃO", "navSectionPreparation"), taf);
+    }
+
+    if (!$("#sidebarGoogleLogin")) {
+      nav.appendChild(makeSectionLabel("CONTA", "navSectionAccount"));
+      nav.appendChild(makeGoogleSidebarButton());
     }
 
     const exportButton = $("#exportBackupMenu");
@@ -368,6 +383,47 @@
     return window.firebaseSync || null;
   }
 
+  function renderGoogleSidebarState(user) {
+    const button = $("#sidebarGoogleLogin");
+    if (!button) return;
+
+    if (user) {
+      button.innerHTML = `<span>✓</span><span>Google conectado</span>`;
+      button.disabled = true;
+      button.title = user.email || "Conta Google conectada";
+      return;
+    }
+
+    button.innerHTML = `<span>G</span><span>Entrar com Google</span>`;
+    button.disabled = false;
+    button.title = "Entrar com a Conta Google";
+  }
+
+  async function loginFromSidebar() {
+    const button = $("#sidebarGoogleLogin");
+    const firebase = await waitForFirebaseSync();
+    if (!firebase?.loginWithGoogle) {
+      alert("O login com Google não está disponível agora.");
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = `<span>G</span><span>Abrindo Google…</span>`;
+    }
+
+    try {
+      const result = await firebase.loginWithGoogle();
+      renderGoogleSidebarState(result?.user || await firebase.getCurrentFirebaseUser());
+    } catch (error) {
+      console.error("Não foi possível entrar com Google pelo menu lateral:", error);
+      renderGoogleSidebarState(null);
+      if (error?.code !== "auth/popup-closed-by-user") {
+        alert("Não foi possível entrar com Google. Tente novamente.");
+      }
+    }
+  }
+
   function renderPlan(plan) {
     const isPremium = plan === "premium";
     const label = isPremium ? "PREMIUM" : "GRÁTIS";
@@ -410,6 +466,7 @@
       button.addEventListener("click", () => openPremium(button.dataset.premiumShortcut));
     });
 
+    $("#sidebarGoogleLogin")?.addEventListener("click", () => void loginFromSidebar());
     $("#premiumTopBadge")?.addEventListener("click", () => openPremium("study"));
 
     $$("[data-premium-mode]").forEach(button => {
@@ -446,8 +503,12 @@
     const firebase = await waitForFirebaseSync();
     if (!firebase) return;
 
+    renderGoogleSidebarState(await firebase.getCurrentFirebaseUser());
     await refreshPlanStatus();
-    firebase.observeFirebaseUser(() => refreshPlanStatus()).catch(error => {
+    firebase.observeFirebaseUser(user => {
+      renderGoogleSidebarState(user);
+      void refreshPlanStatus();
+    }).catch(error => {
       console.error("Não foi possível observar o plano Premium:", error);
     });
   }
