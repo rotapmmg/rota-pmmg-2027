@@ -76,7 +76,70 @@
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function setSidebarLoginState(text, disabled = false) {
+    const button = $("#sidebarGoogleLogin");
+    if (!button) return;
+    button.disabled = disabled;
+    button.innerHTML = `<span>G</span><span>${text}</span>`;
+  }
+
+  async function handleSidebarGoogleLogin(event) {
+    const button = event.target.closest?.("#sidebarGoogleLogin");
+    if (!button) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    const firebase = window.firebaseSync;
+    if (!firebase?.loginWithGoogle) {
+      setSidebarLoginState("Login carregando…", true);
+      window.setTimeout(() => {
+        setSidebarLoginState("Entrar com Google", false);
+        alert("O login ainda estava inicializando. Tente novamente agora.");
+      }, 1200);
+      return true;
+    }
+
+    setSidebarLoginState("Abrindo Google…", true);
+
+    const timeout = window.setTimeout(() => {
+      if (document.body.contains(button) && button.disabled) {
+        setSidebarLoginState("Entrar com Google", false);
+      }
+    }, 12000);
+
+    try {
+      const result = await firebase.loginWithGoogle();
+      window.clearTimeout(timeout);
+
+      const user = result?.user || await firebase.getCurrentFirebaseUser();
+      if (user) {
+        button.innerHTML = `<span>✓</span><span>Google conectado</span>`;
+        button.disabled = true;
+        button.title = user.email || "Conta Google conectada";
+      } else {
+        setSidebarLoginState("Entrar com Google", false);
+      }
+    } catch (error) {
+      window.clearTimeout(timeout);
+      console.error("Não foi possível entrar com Google pelo menu lateral:", error);
+      setSidebarLoginState("Entrar com Google", false);
+
+      if (error?.code !== "auth/popup-closed-by-user") {
+        alert("Não foi possível abrir o login do Google. Verifique se pop-ups estão permitidos e tente novamente.");
+      }
+    }
+
+    return true;
+  }
+
   document.addEventListener("click", event => {
+    if (event.target.closest?.("#sidebarGoogleLogin")) {
+      void handleSidebarGoogleLogin(event);
+      return;
+    }
+
     const continueButton = event.target.closest?.("#dashboardContinueStudy");
     if (continueButton) {
       setTimeout(() => void focusPanel("study", true), 0);
