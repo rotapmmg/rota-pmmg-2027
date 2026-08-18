@@ -1,3 +1,7 @@
+import("./premium-questions-legal-extra.js?v=1").catch(error => {
+  console.error("Não foi possível carregar o banco jurídico complementar:", error);
+});
+
 import("./lessons-matematica-aprofundamento.js?v=1").catch(error => {
   console.error("Não foi possível carregar o aprofundamento de Matemática:", error);
 });
