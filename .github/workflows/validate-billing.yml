@@ -1,0 +1,35 @@
+name: Validar integração Pix
+
+on:
+  pull_request:
+    paths:
+      - "functions/**"
+      - "premium-billing.js"
+      - "launch-cleanup.js"
+      - "premium-home-bridge.js"
+      - "firebase-sync.js"
+      - ".github/workflows/validate-billing.yml"
+  push:
+    branches: [main]
+    paths:
+      - "functions/**"
+      - "premium-billing.js"
+      - "launch-cleanup.js"
+      - "premium-home-bridge.js"
+      - "firebase-sync.js"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar JavaScript do billing
+        run: |
+          node --check functions/index.js
+          node --check premium-billing.js
+          node --check launch-cleanup.js
+          node --check premium-home-bridge.js
+          node --input-type=module --check < firebase-sync.js
