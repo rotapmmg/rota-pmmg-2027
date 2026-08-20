@@ -175,7 +175,13 @@ export async function loadUserPlan() {
     return currentUserPlan;
   }
 
-  currentUserPlan = userSnapshot.data().plan === "premium" ? "premium" : "free";
+  const userData = userSnapshot.data();
+  const premiumUntilMs = typeof userData?.premiumUntil?.toMillis === "function"
+    ? userData.premiumUntil.toMillis()
+    : 0;
+  const premiumActive = userData?.plan === "premium" && premiumUntilMs > Date.now();
+
+  currentUserPlan = premiumActive ? "premium" : "free";
   return currentUserPlan;
 }
 
