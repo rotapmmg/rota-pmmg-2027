@@ -14,6 +14,7 @@ const mercadoPagoWebhookSecret = defineSecret("MERCADO_PAGO_WEBHOOK_SECRET");
 
 const PREMIUM_PRICE = 30;
 const PREMIUM_DURATION_DAYS = 30;
+const PREMIUM_PRODUCT_ID = "rota_pmmg_premium_1_mes";
 const REGION = "southamerica-east1";
 
 function json(res, status, payload) {
@@ -111,7 +112,7 @@ exports.createPixPayment = onRequest(
           },
           metadata: {
             user_id: user.uid,
-            product: "rota_pmmg_premium_1_mes",
+            product: PREMIUM_PRODUCT_ID,
             duration_days: PREMIUM_DURATION_DAYS
           }
         })
@@ -120,6 +121,7 @@ exports.createPixPayment = onRequest(
       const paymentId = String(payment.id);
       await db.doc(`billingPayments/${paymentId}`).set({
         userId: user.uid,
+        product: PREMIUM_PRODUCT_ID,
         provider: "mercado_pago",
         method: "pix",
         amount: PREMIUM_PRICE,
@@ -169,22 +171,46 @@ function addPremiumPeriod(baseDate) {
   return new Date(baseDate.getTime() + PREMIUM_DURATION_DAYS * 24 * 60 * 60 * 1000);
 }
 
+function paymentMatchesPremiumProduct(payment, storedPayment) {
+  const paymentId = String(payment?.id || "");
+  const userId = String(payment?.external_reference || payment?.metadata?.user_id || "");
+  const amount = Number(payment?.transaction_amount || 0);
+  const method = String(payment?.payment_method_id || "");
+  const product = String(payment?.metadata?.product || "");
+
+  return Boolean(
+    paymentId &&
+    userId &&
+    payment?.status === "approved" &&
+    amount === PREMIUM_PRICE &&
+    method === "pix" &&
+    product === PREMIUM_PRODUCT_ID &&
+    storedPayment &&
+    String(storedPayment.userId || "") === userId &&
+    String(storedPayment.product || "") === PREMIUM_PRODUCT_ID &&
+    Number(storedPayment.amount || 0) === PREMIUM_PRICE &&
+    String(storedPayment.method || "") === "pix" &&
+    String(storedPayment.provider || "") === "mercado_pago"
+  );
+}
+
 async function activateApprovedPayment(payment) {
   const paymentId = String(payment.id || "");
   const userId = String(payment.external_reference || payment.metadata?.user_id || "");
-  const amount = Number(payment.transaction_amount || 0);
-  const method = String(payment.payment_method_id || "");
-
   if (!paymentId || !userId) throw new Error("Pagamento sem vínculo de usuário.");
-  if (payment.status !== "approved") return false;
-  if (amount !== PREMIUM_PRICE || method !== "pix") throw new Error("Pagamento aprovado não corresponde ao produto Premium esperado.");
 
   const paymentRef = db.doc(`billingPayments/${paymentId}`);
   const userRef = db.doc(`users/${userId}`);
 
   await db.runTransaction(async tx => {
     const [paymentSnap, userSnap] = await Promise.all([tx.get(paymentRef), tx.get(userRef)]);
-    if (paymentSnap.exists && paymentSnap.data()?.activatedAt) return;
+    if (!paymentSnap.exists) throw new Error("Pagamento não foi criado pelo checkout do Rota PMMG.");
+
+    const storedPayment = paymentSnap.data() || {};
+    if (storedPayment.activatedAt) return;
+    if (!paymentMatchesPremiumProduct(payment, storedPayment)) {
+      throw new Error("Pagamento aprovado não corresponde ao produto Premium esperado.");
+    }
 
     const now = new Date();
     const currentUntil = userSnap.exists && userSnap.data()?.premiumUntil instanceof Timestamp
@@ -203,10 +229,6 @@ async function activateApprovedPayment(payment) {
     }, { merge: true });
 
     tx.set(paymentRef, {
-      userId,
-      provider: "mercado_pago",
-      method: "pix",
-      amount: PREMIUM_PRICE,
       status: "approved",
       approvedAt: payment.date_approved ? Timestamp.fromDate(new Date(payment.date_approved)) : FieldValue.serverTimestamp(),
       activatedAt: FieldValue.serverTimestamp(),
@@ -231,18 +253,24 @@ exports.mercadoPagoWebhook = onRequest(
       if (!paymentId || (type && type !== "payment")) return json(res, 200, { received: true });
       if (!validateWebhookSignature(req, paymentId)) return json(res, 401, { error: "invalid_signature" });
 
+      const paymentRef = db.doc(`billingPayments/${paymentId}`);
+      const storedPaymentSnap = await paymentRef.get();
+      if (!storedPaymentSnap.exists) {
+        console.warn("Ignorando pagamento que não foi criado pelo checkout do Rota PMMG", paymentId);
+        return json(res, 200, { received: true, ignored: true });
+      }
+
       const payment = await mercadoPagoRequest(`/v1/payments/${encodeURIComponent(paymentId)}`, { method: "GET" });
 
-      await db.doc(`billingPayments/${paymentId}`).set({
-        userId: String(payment.external_reference || payment.metadata?.user_id || ""),
-        provider: "mercado_pago",
-        method: String(payment.payment_method_id || ""),
-        amount: Number(payment.transaction_amount || 0),
-        status: String(payment.status || "unknown"),
-        updatedAt: FieldValue.serverTimestamp()
-      }, { merge: true });
+      if (payment.status === "approved") {
+        await activateApprovedPayment(payment);
+      } else {
+        await paymentRef.set({
+          status: String(payment.status || "unknown"),
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
 
-      if (payment.status === "approved") await activateApprovedPayment(payment);
       return json(res, 200, { received: true });
     } catch (error) {
       console.error("mercadoPagoWebhook", error, error?.details || "");
