@@ -1,3 +1,27 @@
+"use strict";
+
+window.PMMG_LESSONS = window.PMMG_LESSONS || {};
+
+[
+  "lessons-processo-penal-01.js",
+  "lessons-processo-penal-02.js",
+  "lessons-processo-penal-03.js",
+  "lessons-processo-penal-04.js",
+  "lessons-processo-penal-05.js",
+  "lessons-processo-penal-06.js"
+].forEach((file) => {
+  const request = new XMLHttpRequest();
+  request.open("GET", file, false);
+  request.send(null);
+
+  if (request.status >= 200 && request.status < 300) {
+    (0, eval)(`${request.responseText}\n//# sourceURL=${file}`);
+    return;
+  }
+
+  throw new Error(`Falha ao carregar ${file}: HTTP ${request.status}`);
+});
+
 (() => {
   "use strict";
 
