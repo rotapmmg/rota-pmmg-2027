@@ -16,6 +16,8 @@ const PREMIUM_PRICE = 30;
 const PREMIUM_DURATION_DAYS = 30;
 const PREMIUM_PRODUCT_ID = "rota_pmmg_premium_1_mes";
 const REGION = "southamerica-east1";
+const PIX_RATE_LIMIT_MAX = 5;
+const PIX_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 function json(res, status, payload) {
   res.status(status).set("Content-Type", "application/json; charset=utf-8").send(JSON.stringify(payload));
@@ -30,6 +32,30 @@ async function requireUser(req) {
   const match = header.match(/^Bearer\s+(.+)$/i);
   if (!match) throw Object.assign(new Error("Autenticação obrigatória."), { status: 401 });
   return getAuth().verifyIdToken(match[1]);
+}
+
+async function enforcePixRateLimit(userId) {
+  const ref = db.doc(`billingRateLimits/${userId}`);
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    const data = snap.exists ? snap.data() || {} : {};
+    const windowStart = data.windowStart instanceof Timestamp ? data.windowStart.toMillis() : 0;
+    const inCurrentWindow = windowStart > 0 && now - windowStart < PIX_RATE_LIMIT_WINDOW_MS;
+    const count = inCurrentWindow ? Number(data.count || 0) : 0;
+
+    if (count >= PIX_RATE_LIMIT_MAX) {
+      const error = new Error("Muitas tentativas de gerar Pix. Aguarde alguns minutos e tente novamente.");
+      error.status = 429;
+      throw error;
+    }
+
+    tx.set(ref, {
+      count: count + 1,
+      windowStart: Timestamp.fromMillis(inCurrentWindow ? windowStart : now),
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
 }
 
 async function mercadoPagoRequest(path, options = {}) {
@@ -88,9 +114,14 @@ exports.createPixPayment = onRequest(
 
     try {
       const user = await requireUser(req);
+      if (!user.email || user.email_verified !== true) {
+        return json(res, 400, { error: "verified_email_required" });
+      }
+
+      await enforcePixRateLimit(user.uid);
+
       const cpf = normalizeCpf(req.body?.cpf);
       if (cpf.length !== 11) return json(res, 400, { error: "cpf_invalid" });
-      if (!user.email) return json(res, 400, { error: "email_required" });
 
       const idempotencyKey = crypto.randomUUID();
       const payment = await mercadoPagoRequest("/v1/payments", {
@@ -135,7 +166,7 @@ exports.createPixPayment = onRequest(
     } catch (error) {
       console.error("createPixPayment", error, error?.details || "");
       return json(res, Number(error.status || 500), {
-        error: "pix_create_failed",
+        error: Number(error.status || 500) === 429 ? "rate_limited" : "pix_create_failed",
         message: error.message
       });
     }
