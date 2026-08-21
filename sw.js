@@ -1,4 +1,4 @@
-const CACHE = "rota-pmmg-v33";
+const CACHE = "rota-pmmg-v34";
 
 const ASSETS = [
   "./",
@@ -15,6 +15,12 @@ const ASSETS = [
   "./lessons-administrativo.js",
   "./lessons-penal.js",
   "./lessons-processo-penal.js",
+  "./lessons-processo-penal-01.js",
+  "./lessons-processo-penal-02.js",
+  "./lessons-processo-penal-03.js",
+  "./lessons-processo-penal-04.js",
+  "./lessons-processo-penal-05.js",
+  "./lessons-processo-penal-06.js",
   "./lessons-direitos-humanos.js",
   "./lessons-matematica.js?v=3",
   "./lessons-ingles.js?v=1",
