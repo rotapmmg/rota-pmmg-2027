@@ -1,0 +1,49 @@
+name: Validar site
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar JavaScript clássico
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 -type f -name '*.js' ! -name 'firebase-config.js' ! -name 'firebase-sync.js' -print0 | while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done
+      - name: Validar módulos ES
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in firebase-config.js firebase-sync.js; do
+            if [ -f "$file" ]; then
+              echo "Checking module $file"
+              node --input-type=module --check < "$file"
+            fi
+          done
+      - name: Validar Functions quando presentes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f functions/index.js ]; then node --check functions/index.js; fi
+      - name: Bloquear segredos comuns versionados
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)(service-account|serviceAccount|credentials|firebase-adminsdk|\.env)(\.|$)' ; then
+            echo 'Arquivo potencialmente sensível está versionado.' >&2
+            exit 1
+          fi

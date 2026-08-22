@@ -1,0 +1,33 @@
+name: Gerar snapshot de recuperação
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '.github/workflows/recovery-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Criar snapshot sem metadados Git
+        shell: bash
+        run: |
+          set -euo pipefail
+          SNAPSHOT_DIR="$RUNNER_TEMP/rota-pmmg-snapshot"
+          mkdir -p "$SNAPSHOT_DIR"
+          tar --exclude='.git' --exclude='node_modules' -czf "$SNAPSHOT_DIR/rota-pmmg-2027-snapshot.tgz" .
+          sha256sum "$SNAPSHOT_DIR/rota-pmmg-2027-snapshot.tgz" > "$SNAPSHOT_DIR/rota-pmmg-2027-snapshot.sha256"
+      - name: Publicar artifact temporário
+        uses: actions/upload-artifact@v4
+        with:
+          name: rota-pmmg-2027-recovery
+          path: ${{ runner.temp }}/rota-pmmg-snapshot/*
+          retention-days: 7

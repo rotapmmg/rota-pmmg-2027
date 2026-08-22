@@ -1,0 +1,31 @@
+# Dependências
+node_modules/
+functions/node_modules/
+
+# Credenciais e segredos
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+service-account*.json
+firebase-service-account*.json
+
+# Firebase / Google Cloud local
+.firebase/
+.gcloud/
+.firebaserc.local
+
+# Backups e exports locais
+backups/
+exports/
+*.backup
+
+# Logs e temporários
+*.log
+.DS_Store
+Thumbs.db
+.tmp/
+tmp/
