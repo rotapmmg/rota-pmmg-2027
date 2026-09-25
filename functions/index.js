@@ -10,7 +10,6 @@ const db = admin.firestore();
 
 const MP_ACCESS_TOKEN = defineSecret("MP_ACCESS_TOKEN");
 const MP_WEBHOOK_SECRET = defineSecret("MP_WEBHOOK_SECRET");
-const MP_PREAPPROVAL_PLAN_ID = defineSecret("MP_PREAPPROVAL_PLAN_ID");
 
 const APP_ORIGIN = "https://rotapmmg.github.io";
 const WEBHOOK_PATH = "/mercadoPagoWebhook";
@@ -106,9 +105,6 @@ function isInactiveSubscriptionStatus(status) {
 }
 
 async function resolvePremiumPlanId() {
-  const configuredPlanId = MP_PREAPPROVAL_PLAN_ID.value();
-  if (configuredPlanId) return configuredPlanId;
-
   const params = new URLSearchParams({
     status: "active",
     q: "Rota pmmg premium"
@@ -161,7 +157,7 @@ async function updateUserSubscription(uid, subscription) {
 exports.createPremiumSubscription = onRequest(
   {
     region: "southamerica-east1",
-    secrets: [MP_ACCESS_TOKEN, MP_PREAPPROVAL_PLAN_ID],
+    secrets: [MP_ACCESS_TOKEN],
     cors: true
   },
   async (req, res) => {
