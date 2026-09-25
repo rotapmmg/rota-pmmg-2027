@@ -133,7 +133,7 @@ async function resolvePremiumPlanId() {
     const error = new Error(
       matches.length === 0
         ? "Não foi possível localizar exatamente um plano ativo 'Rota pmmg premium' de R$ 25,90/mês."
-        : "Foram encontrados vários planos compatíveis. Configure MP_PREAPPROVAL_PLAN_ID para selecionar o correto."
+        : "Foram encontrados vários planos compatíveis. Mantenha apenas um plano ativo com esse nome, valor e frequência."
     );
     error.status = 500;
     throw error;
