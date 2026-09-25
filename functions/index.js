@@ -75,7 +75,12 @@ function isValidWebhookSignature(req) {
 
   const signature = req.get("x-signature") || "";
   const requestId = req.get("x-request-id") || "";
-  const notificationId = String(req.body?.data?.id || req.query?.id || "");
+  const notificationId = String(
+    req.query?.["data.id"] ||
+    req.body?.data?.id ||
+    req.query?.id ||
+    ""
+  ).toLowerCase();
 
   const parts = Object.fromEntries(
     signature.split(",").map(part => {
@@ -218,7 +223,12 @@ exports.mercadoPagoWebhook = onRequest(
       }
 
       const type = String(req.body?.type || req.query?.type || "");
-      const resourceId = String(req.body?.data?.id || req.query?.id || "");
+      const resourceId = String(
+        req.body?.data?.id ||
+        req.query?.["data.id"] ||
+        req.query?.id ||
+        ""
+      );
 
       if (type !== "subscription_preapproval" || !resourceId) {
         return json(res, 200, { received: true, ignored: true });
