@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isPremium() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.plan == "premium";
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && (!("plan" in request.resource.data) || request.resource.data.plan != "premium")
+        && (!("subscriptionStatus" in request.resource.data) || request.resource.data.subscriptionStatus != "authorized");
+
+      allow update: if isOwner(userId)
+        && request.resource.data.get("plan", null) == resource.data.get("plan", null)
+        && request.resource.data.get("subscriptionStatus", null) == resource.data.get("subscriptionStatus", null);
+
+      allow delete: if isOwner(userId);
+    }
+
+    match /userBackups/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /premiumLessons/{lessonId} {
+      allow read: if isPremium();
+      allow write: if false;
+    }
+
+    match /premiumQuestions/{questionId} {
+      allow read: if isPremium();
+      allow write: if false;
+    }
+
+    match /mercadoPagoWebhookEvents/{eventId} {
+      allow read, write: if false;
+    }
+  }
+}

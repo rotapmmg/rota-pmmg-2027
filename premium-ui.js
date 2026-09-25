@@ -165,13 +165,13 @@
             <span class="premium-recommended">MAIS COMPLETO</span>
             <span class="eyebrow">ROTA PREMIUM</span>
             <h3>Premium</h3>
-            <div class="premium-price">Em breve</div>
+            <div class="premium-price">Assinatura mensal</div>
             <p class="muted">Preparação completa e especializada para a PMMG.</p>
             <ul>
               ${premiumFeatures.map(x => `<li>★ ${x}</li>`).join("")}
             </ul>
-            <button class="primary-btn" id="premiumInterest">Quero ser Premium</button>
-            <small class="premium-note">Pagamento ainda não ativado.</small>
+            <button class="primary-btn" id="premiumInterest">Assinar Premium</button>
+            <small class="premium-note">Pagamento seguro pelo Mercado Pago.</small>
           </article>
         </div>
       </div>
@@ -480,23 +480,38 @@
       button.addEventListener("click", clearPremiumNavigationState);
     });
 
-    $("#premiumInterest")?.addEventListener("click", () => {
-      localStorage.setItem("pmmgPremiumInterest", "true");
+    $("#premiumInterest")?.addEventListener("click", async () => {
       const button = $("#premiumInterest");
-      if (button) {
-        button.textContent = "Interesse registrado ✓";
-        button.disabled = true;
-      }
-      alert("A assinatura ainda não está ativa. Este botão será conectado ao pagamento depois.");
-    });
+      const firebase = await waitForFirebaseSync();
 
-    if (localStorage.getItem("pmmgPremiumInterest") === "true") {
-      const button = $("#premiumInterest");
-      if (button) {
-        button.textContent = "Interesse registrado ✓";
-        button.disabled = true;
+      if (!firebase?.createPremiumSubscription) {
+        alert("O pagamento ainda não está disponível. Tente novamente em instantes.");
+        return;
       }
-    }
+
+      const user = await firebase.getCurrentFirebaseUser();
+      if (!user) {
+        alert("Entre com sua conta Google antes de assinar o Premium.");
+        return;
+      }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Abrindo Mercado Pago…";
+      }
+
+      try {
+        const result = await firebase.createPremiumSubscription();
+        window.location.href = result.initPoint;
+      } catch (error) {
+        console.error("Não foi possível iniciar a assinatura Premium:", error);
+        if (button) {
+          button.disabled = false;
+          button.textContent = "Assinar Premium";
+        }
+        alert(error?.message || "Não foi possível iniciar a assinatura.");
+      }
+    });
   }
 
   async function watchPlan() {
