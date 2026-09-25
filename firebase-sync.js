@@ -156,6 +156,33 @@ export function getFirebaseServices() {
   return { app: firebaseApp, auth: firebaseAuth, db: firestoreDb };
 }
 
+
+
+const PREMIUM_BACKEND_URL = "https://southamerica-east1-rota-pmmg-2027.cloudfunctions.net";
+
+export async function createPremiumSubscription() {
+  const services = await initializeFirebaseSync();
+  if (!services?.auth) throw new Error("Firebase não está disponível.");
+
+  const user = services.auth.currentUser;
+  if (!user) throw new Error("É necessário entrar com Google.");
+
+  const idToken = await user.getIdToken();
+  const response = await fetch(`${PREMIUM_BACKEND_URL}/createPremiumSubscription`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json"
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Não foi possível iniciar a assinatura.");
+
+  if (!data.initPoint) throw new Error("O Mercado Pago não retornou o link da assinatura.");
+  return data;
+}
+
 export async function loadUserPlan() {
   const services = await initializeFirebaseSync();
   if (!services?.auth || !services?.db) {
@@ -267,6 +294,7 @@ window.firebaseSync = {
   saveFirebaseBackup,
   loadFirebaseBackup,
   loadUserPlan,
+  createPremiumSubscription,
   loadPremiumLesson,
   loadPremiumLessons,
   loadPremiumQuestions,
