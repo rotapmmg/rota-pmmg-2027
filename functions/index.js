@@ -105,6 +105,42 @@ function isInactiveSubscriptionStatus(status) {
   return ["paused", "cancelled", "canceled", "expired"].includes(String(status || "").toLowerCase());
 }
 
+async function resolvePremiumPlanId() {
+  const configuredPlanId = MP_PREAPPROVAL_PLAN_ID.value();
+  if (configuredPlanId) return configuredPlanId;
+
+  const params = new URLSearchParams({
+    status: "active",
+    q: "Rota pmmg premium"
+  });
+
+  const data = await mercadoPagoRequest(`/preapproval_plan/search?${params.toString()}`);
+  const candidates = Array.isArray(data.results) ? data.results : [];
+
+  const matches = candidates.filter(plan => {
+    const recurring = plan.auto_recurring || {};
+    const amount = Number(recurring.transaction_amount);
+    return String(plan.reason || "").trim().toLowerCase() === "rota pmmg premium" &&
+      amount === 25.9 &&
+      String(recurring.currency_id || "").toUpperCase() === "BRL" &&
+      Number(recurring.frequency) === 1 &&
+      String(recurring.frequency_type || "").toLowerCase() === "months" &&
+      String(plan.status || "").toLowerCase() === "active";
+  });
+
+  if (matches.length !== 1) {
+    const error = new Error(
+      matches.length === 0
+        ? "Não foi possível localizar exatamente um plano ativo 'Rota pmmg premium' de R$ 25,90/mês."
+        : "Foram encontrados vários planos compatíveis. Configure MP_PREAPPROVAL_PLAN_ID para selecionar o correto."
+    );
+    error.status = 500;
+    throw error;
+  }
+
+  return String(matches[0].id);
+}
+
 async function updateUserSubscription(uid, subscription) {
   const status = String(subscription.status || "").toLowerCase();
 
@@ -135,8 +171,7 @@ exports.createPremiumSubscription = onRequest(
       const user = await requireUser(req);
       if (!user.email) return json(res, 400, { error: "A conta Google não possui e-mail disponível." });
 
-      const planId = MP_PREAPPROVAL_PLAN_ID.value();
-      if (!planId) return json(res, 500, { error: "Plano do Mercado Pago ainda não configurado no servidor." });
+      const planId = await resolvePremiumPlanId();
 
       const existing = await db.doc(`users/${user.uid}`).get();
       const existingData = existing.exists ? existing.data() : {};
