@@ -23,8 +23,8 @@ service cloud.firestore {
         && (!("subscriptionStatus" in request.resource.data) || request.resource.data.subscriptionStatus != "authorized");
 
       allow update: if isOwner(userId)
-        && request.resource.data.plan == resource.data.plan
-        && request.resource.data.subscriptionStatus == resource.data.subscriptionStatus;
+        && request.resource.data.get("plan", null) == resource.data.get("plan", null)
+        && request.resource.data.get("subscriptionStatus", null) == resource.data.get("subscriptionStatus", null);
 
       allow delete: if isOwner(userId);
     }
